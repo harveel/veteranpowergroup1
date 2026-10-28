@@ -5,9 +5,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Suspense } from "react";
 import { AccessDeniedNotice } from "@/components/access-denied-notice";
 import { publicSiteUrl } from "@/lib/surface-urls";
-import { firstAllowedHref, staffSectionGroups, type StaffSectionKey } from "@/lib/staff-sections";
+import { firstAllowedHref, staffSectionGroups, type StaffAccessKey } from "@/lib/staff-sections";
 
-export function DashboardShell({ children, staff, sections }: { children: React.ReactNode; staff: { name: string; email: string }; sections: StaffSectionKey[] }) {
+export function DashboardShell({ children, staff, sections }: { children: React.ReactNode; staff: { name: string; email: string }; sections: StaffAccessKey[] }) {
   const navGroups = staffSectionGroups
     .map(({ group, sections: groupSections }) => [group, groupSections.filter((section) => sections.includes(section.key)).map((section) => [section.label, section.href])] as const)
     .filter(([, items]) => items.length > 0);

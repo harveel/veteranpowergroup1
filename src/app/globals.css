@@ -579,3 +579,4 @@ td { color: var(--ink); }
 .staff-sections-edit .staff-sections { grid-template-columns: 1fr 1fr; }
 @media (max-width: 760px) { .staff-sections { grid-template-columns: 1fr 1fr; } .access-denied-notice { margin: 16px 18px 0; } }
 .sidebar-bottom > a:not(.sidebar-download-all) { display: block; margin-top: 12px; }
+.company-profile-form .company-profile-wide { grid-column: 1 / -1; }

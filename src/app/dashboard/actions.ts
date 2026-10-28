@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getStaffAccess, hashStaffPassword, requirePrototypeAdminSession, requirePrototypeSession, requireSectionAccess } from "@/lib/prototype-auth";
-import { documentSection, isStaffSectionKey } from "@/lib/staff-sections";
+import { documentSection, isStaffAccessKey, isStaffSectionKey } from "@/lib/staff-sections";
 import { getSchoolPaymentPlan } from "@/lib/school-payment-plans";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { isPortfolioMediaType } from "@/lib/portfolio-media";
@@ -30,7 +30,9 @@ const staffPasswordSchema = z.object({
 
 function parseStaffSections(formData: FormData) {
   const sections = [...new Set(formData.getAll("sections"))];
-  return sections.length > 0 && sections.every(isStaffSectionKey) ? sections : null;
+  if (!sections.every(isStaffAccessKey)) return null;
+  if (sections.includes("company-profile") && !sections.includes("settings")) sections.push("settings");
+  return sections.some(isStaffSectionKey) ? sections : null;
 }
 
 const staffRoleName = "Prototype staff";
@@ -805,6 +807,35 @@ export async function setPortfolioProjectPublished(formData: FormData) {
   await prisma.portfolioProject.update({ where: { id: parsed.data.id }, data: { isPublished: parsed.data.isPublished === "true" } });
   revalidatePath("/portfolio");
   redirect("/dashboard/portfolio?updated=1");
+}
+
+const optionalText = (max: number) => z.string().trim().max(max).transform((value) => value || null);
+const companyProfileSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+  address: optionalText(300),
+  email: z.union([z.literal(""), z.email()]).transform((value) => value || null),
+  phone: optionalText(40),
+  quotePrefix: z.string().trim().min(1).max(10).regex(/^[A-Za-z0-9-]+$/),
+  defaultTaxRate: z.coerce.number().min(0).max(100),
+  quoteValidityDays: z.coerce.number().int().min(1).max(365),
+});
+
+export async function updateCompanyProfile(formData: FormData) {
+  const actor = await requireSectionAccess("company-profile");
+  const parsed = companyProfileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) redirect("/dashboard/settings?profile=invalid");
+  const { name, address, email, phone, quotePrefix, defaultTaxRate, quoteValidityDays } = parsed.data;
+
+  await prisma.$transaction([
+    prisma.companySettings.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} }),
+    prisma.companyProfile.upsert({ where: { companyId: 1 }, create: { companyId: 1, name, address, email, phone }, update: { name, address, email, phone } }),
+    prisma.documentSettings.upsert({ where: { companyId: 1 }, create: { companyId: 1, quotePrefix, defaultTaxRate, quoteValidityDays }, update: { quotePrefix, defaultTaxRate, quoteValidityDays } }),
+  ]);
+  await prisma.auditLog.create({
+    data: { actorId: actor.userId, action: "updated", entityType: "CompanyProfile", entityId: "1", summary: `Updated company profile for ${name}` },
+  });
+  revalidatePath("/", "layout");
+  redirect("/dashboard/settings?profile=saved");
 }
 
 const whatsappSchema = z.object({
