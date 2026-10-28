@@ -1,9 +1,9 @@
 import { addPortfolioProjectMedia, createPortfolioProject, setPortfolioProjectPublished } from "@/app/dashboard/actions";
 import { prisma } from "@/lib/prisma";
-import { requirePrototypeSession } from "@/lib/prototype-auth";
+import { requireSectionAccess } from "@/lib/prototype-auth";
 
 export default async function PortfolioManagerPage({ searchParams }: PageProps<"/dashboard/portfolio">) {
-  await requirePrototypeSession();
+  await requireSectionAccess("portfolio");
   const params = await searchParams;
   const projects = await prisma.portfolioProject.findMany({ orderBy: { createdAt: "desc" } });
   return <main className="dashboard-main">

@@ -23,6 +23,7 @@ export default async function Login({ searchParams }: PageProps<"/login">) {
             <h2 className="font-[var(--font-space-grotesk)] text-3xl font-medium tracking-[-.05em]">Sign in to continue</h2>
             <p className="staff-login-hint mt-3 border-l-2 border-[#d7f36a] pl-3 text-xs leading-5">Use the staff credentials provided by your administrator.</p>
             {params.error === "invalid" && <p className="mt-5 text-sm text-[#b54328]" role="alert">Those credentials were not recognized.</p>}
+            {params.error === "access" && <p className="mt-5 text-sm text-[#b54328]" role="alert">Your account has no portal sections assigned. Ask an administrator for access.</p>}
             <label className="mt-8 block text-xs font-semibold" htmlFor="email">Work email</label>
             <input className="mt-2 w-full border-b border-[#b9c2ba] bg-transparent px-0 py-3 text-sm outline-none focus:border-[#ff855d]" id="email" name="email" type="email" placeholder="you@company.com" autoComplete="username" required />
             <label className="mt-6 block text-xs font-semibold" htmlFor="password">Password</label>

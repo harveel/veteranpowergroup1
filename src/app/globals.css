@@ -567,3 +567,15 @@ td { color: var(--ink); }
 .whatsapp-float:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
 .whatsapp-settings-form textarea { background: #fbfcfa; border: 1px solid var(--line); border-radius: 0; color: var(--ink); font: inherit; font-size: 13px; min-height: 84px; padding: 9px 11px; width: 100%; }
 .whatsapp-settings-form .whatsapp-message-field { grid-column: 1 / -1; }
+.access-denied-notice { margin: 24px 55px 0; }
+.staff-sections { border: 1px solid var(--line); display: grid; gap: 14px 22px; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 14px 16px 16px; }
+.staff-sections legend { color: var(--muted); font-size: 11px; padding: 0 6px; }
+.staff-section-group { display: grid; align-content: start; gap: 8px; }
+.staff-section-group > span { color: var(--muted); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.staff-sections .checkbox-label { color: var(--ink); font-size: 12px; }
+.staff-sections input[type="checkbox"] { accent-color: var(--forest); min-height: auto; width: auto; }
+.staff-sections-edit summary { color: var(--forest); cursor: pointer; font-size: 11px; max-width: 220px; text-decoration: underline; text-underline-offset: 3px; }
+.staff-sections-edit form { display: grid; gap: 10px; min-width: 260px; padding-top: 8px; }
+.staff-sections-edit .staff-sections { grid-template-columns: 1fr 1fr; }
+@media (max-width: 760px) { .staff-sections { grid-template-columns: 1fr 1fr; } .access-denied-notice { margin: 16px 18px 0; } }
+.sidebar-bottom > a:not(.sidebar-download-all) { display: block; margin-top: 12px; }

@@ -1,6 +1,7 @@
-import { createStaffAccount, resetStaffPassword, setStaffStatus, updateWhatsappSettings } from "@/app/dashboard/actions";
+import { createStaffAccount, resetStaffPassword, setStaffStatus, updateStaffSections, updateWhatsappSettings } from "@/app/dashboard/actions";
+import { isStaffSectionKey, staffSectionGroups, staffSections, type StaffSectionKey } from "@/lib/staff-sections";
 import { prisma } from "@/lib/prisma";
-import { isPrototypeAdministrator, requirePrototypeSession } from "@/lib/prototype-auth";
+import { isPrototypeAdministrator, requireSectionAccess } from "@/lib/prototype-auth";
 import { defaultWhatsappMessage } from "@/lib/whatsapp";
 
 const whatsappMessages: Record<string, string> = {
@@ -11,13 +12,31 @@ const whatsappMessages: Record<string, string> = {
 const staffMessages: Record<string, string> = {
   created: "Staff account created. Share its initial password securely.",
   exists: "An account already uses that email address.",
-  invalid: "Check the account details and password length, then try again.",
+  invalid: "Check the account details and password length, and tick at least one section, then try again.",
+  sections: "Staff section access updated. The change applies on their next page load.",
   updated: "Staff account access updated.",
   "password-reset": "Staff password reset. Share the new password securely.",
 };
 
+function SectionCheckboxes({ selected, idPrefix }: { selected: readonly StaffSectionKey[]; idPrefix: string }) {
+  return <fieldset className="staff-sections">
+    <legend>Section access</legend>
+    {staffSectionGroups.map(({ group, sections }) => <div className="staff-section-group" key={group}>
+      <span>{group}</span>
+      {sections.map((section) => <label className="checkbox-label" key={section.key} htmlFor={`${idPrefix}-${section.key}`}><input id={`${idPrefix}-${section.key}`} type="checkbox" name="sections" value={section.key} defaultChecked={selected.includes(section.key)} />{section.label}</label>)}
+    </div>)}
+  </fieldset>;
+}
+
+function sectionSummary(sectionAccess: string[]) {
+  const sections = sectionAccess.filter(isStaffSectionKey);
+  if (sections.length === staffSections.length) return "All sections";
+  if (sections.length === 0) return "No sections";
+  return staffSections.filter((section) => sections.includes(section.key)).map((section) => section.label).join(", ");
+}
+
 export default async function SettingsPage({ searchParams }: PageProps<"/dashboard/settings">) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("settings");
   const params = await searchParams;
   const staffMessageKey = Array.isArray(params.staff) ? params.staff[0] : params.staff;
   const staffMessage = staffMessageKey ? staffMessages[staffMessageKey] : undefined;
@@ -29,7 +48,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/dashboa
     canManageStaff ? prisma.user.findMany({
       where: { roles: { some: { role: { name: "Prototype staff" } } } },
       orderBy: [{ status: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, email: true, status: true, createdAt: true },
+      select: { id: true, name: true, email: true, status: true, createdAt: true, sectionAccess: true },
     }) : Promise.resolve([]),
   ]);
 
@@ -51,18 +70,20 @@ export default async function SettingsPage({ searchParams }: PageProps<"/dashboa
     </section>}
 
     {canManageStaff && <section className="panel table-panel staff-management">
-      <div className="panel-heading"><div><p className="eyebrow">Access</p><h3>Staff accounts</h3><p className="dashboard-note">Create individual sign-ins, reset passwords, or disable access.</p></div><span className="prototype-badge">Administrator</span></div>
+      <div className="panel-heading"><div><p className="eyebrow">Access</p><h3>Staff accounts</h3><p className="dashboard-note">Create individual sign-ins, choose which portal sections each person can use, reset passwords, or disable access.</p></div><span className="prototype-badge">Administrator</span></div>
       {staffMessage && <p className={`staff-feedback${staffMessageKey === "invalid" || staffMessageKey === "exists" ? " is-error" : ""}`} role="status">{staffMessage}</p>}
       <form action={createStaffAccount} className="prototype-form staff-create-form">
         <label>Staff name<input name="name" autoComplete="name" minLength={2} maxLength={120} required /></label>
         <label>Work email<input name="email" type="email" autoComplete="email" required /></label>
         <label>Temporary password<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required /><span>At least 12 characters. Share it with the staff member securely.</span></label>
+        <SectionCheckboxes selected={[]} idPrefix="new-staff" />
         <button className="dashboard-button" type="submit">Create staff account</button>
       </form>
 
-      <div className="table-scroll staff-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Created</th><th>Access</th><th>Password</th></tr></thead><tbody>
-        {staffUsers.length === 0 ? <tr><td colSpan={6}>No staff accounts have been created.</td></tr> : staffUsers.map((staff) => <tr key={staff.id}>
+      <div className="table-scroll staff-table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Created</th><th>Sections</th><th>Access</th><th>Password</th></tr></thead><tbody>
+        {staffUsers.length === 0 ? <tr><td colSpan={7}>No staff accounts have been created.</td></tr> : staffUsers.map((staff) => <tr key={staff.id}>
           <td>{staff.name}</td><td>{staff.email}</td><td><span className={`account-status ${staff.status === "ACTIVE" ? "is-active" : "is-disabled"}`}>{staff.status === "ACTIVE" ? "Active" : "Disabled"}</span></td><td>{staff.createdAt.toLocaleDateString("en")}</td>
+          <td><details className="staff-sections-edit"><summary>{sectionSummary(staff.sectionAccess)}</summary><form action={updateStaffSections}><input type="hidden" name="userId" value={staff.id} /><SectionCheckboxes selected={staff.sectionAccess.filter(isStaffSectionKey)} idPrefix={`staff-${staff.id}`} /><button className="staff-action" type="submit">Save sections</button></form></details></td>
           <td><form action={setStaffStatus}><input type="hidden" name="userId" value={staff.id} /><input type="hidden" name="status" value={staff.status === "ACTIVE" ? "DISABLED" : "ACTIVE"} /><button className="staff-action" type="submit">{staff.status === "ACTIVE" ? "Disable" : "Enable"}</button></form></td>
           <td><details className="reset-password"><summary>Reset</summary><form action={resetStaffPassword}><input type="hidden" name="userId" value={staff.id} /><label className="sr-only" htmlFor={`password-${staff.id}`}>New password for {staff.name}</label><input id={`password-${staff.id}`} name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} placeholder="12+ characters" required /><button className="staff-action" type="submit">Set password</button></form></details></td>
         </tr>)}

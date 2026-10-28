@@ -6,7 +6,8 @@ import sharp from "sharp";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { hashStaffPassword, requirePrototypeAdminSession, requirePrototypeSession } from "@/lib/prototype-auth";
+import { getStaffAccess, hashStaffPassword, requirePrototypeAdminSession, requirePrototypeSession, requireSectionAccess } from "@/lib/prototype-auth";
+import { documentSection, isStaffSectionKey } from "@/lib/staff-sections";
 import { getSchoolPaymentPlan } from "@/lib/school-payment-plans";
 import { normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { isPortfolioMediaType } from "@/lib/portfolio-media";
@@ -26,6 +27,11 @@ const staffPasswordSchema = z.object({
   userId: z.string().min(1),
   password: z.string().min(12).max(128),
 });
+
+function parseStaffSections(formData: FormData) {
+  const sections = [...new Set(formData.getAll("sections"))];
+  return sections.length > 0 && sections.every(isStaffSectionKey) ? sections : null;
+}
 
 const staffRoleName = "Prototype staff";
 const adminRoleName = "Prototype administrator";
@@ -152,7 +158,7 @@ async function preparePortfolioMedia(formData: FormData, uploadedById: string) {
 }
 
 export async function createCustomer(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("customers");
   const parsed = customerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/customers?error=invalid");
   const actor = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -173,7 +179,7 @@ export async function createCustomer(formData: FormData) {
 }
 
 export async function createQuotation(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("quotations");
   const parsed = quotationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/quotations?error=invalid");
   const owner = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -222,7 +228,7 @@ export async function createQuotation(formData: FormData) {
 }
 
 export async function createInvoice(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("invoices");
   const parsed = quotationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/invoices?error=invalid");
   const owner = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -263,7 +269,7 @@ export async function createInvoice(formData: FormData) {
 }
 
 export async function createSchoolPlanQuotation(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("payment-plans");
   const parsed = schoolPlanSchema.safeParse(Object.fromEntries(formData));
   const plan = parsed.success ? getSchoolPaymentPlan(parsed.data.planId) : undefined;
   if (!parsed.success || !plan) redirect("/dashboard/payment-plans?error=invalid");
@@ -306,7 +312,7 @@ export async function createSchoolPlanQuotation(formData: FormData) {
 }
 
 export async function createInstallmentInvoices(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("invoices");
   const parsed = documentIdSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/quotations?error=invalid");
   const actor = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -333,7 +339,7 @@ export async function createInstallmentInvoices(formData: FormData) {
 }
 
 export async function issueInvoice(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("invoices");
   const parsed = documentIdSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/invoices?error=invalid");
   const invoice = await prisma.document.findUnique({ where: { id: parsed.data.documentId }, select: { id: true, number: true, type: true, invoiceStatus: true } });
@@ -344,7 +350,7 @@ export async function issueInvoice(formData: FormData) {
 }
 
 export async function recordInvoicePayment(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("invoices");
   const parsed = paymentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/invoices?error=invalid");
   const actor = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -370,7 +376,7 @@ export async function recordInvoicePayment(formData: FormData) {
 }
 
 export async function createReceipt(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("receipts");
   const parsed = receiptCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/receipts?error=invalid");
   const actor = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
@@ -449,7 +455,7 @@ export async function createReceipt(formData: FormData) {
 }
 
 export async function updateReceiptDetails(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("receipts");
   const parsed = receiptEditSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect(`/dashboard/documents/${String(formData.get("documentId") ?? "")}?receipt=invalid`);
 
@@ -544,6 +550,9 @@ export async function updateQuotationOrInvoice(formData: FormData) {
   const discounts = formData.getAll("discount");
   const taxRates = formData.getAll("taxRate");
   const path = `/dashboard/documents/${encodeURIComponent(documentId)}`;
+  const target = documentId ? await prisma.document.findUnique({ where: { id: documentId }, select: { type: true } }) : null;
+  const targetSection = target ? documentSection(target.type) : null;
+  if (!targetSection || !(await getStaffAccess(session.userId)).sections.includes(targetSection)) redirect("/dashboard?access=denied");
   const fields = [itemIds, descriptions, quantities, unitPrices, discounts, taxRates];
   if (!documentId || !customerSelection.success || !customerSelection.data.customerId || terms.length > 8000 || !itemIds.length || itemIds.length > 100 || fields.some((values) => values.length !== itemIds.length)) redirect(`${path}?edit=invalid`);
 
@@ -632,7 +641,8 @@ export async function updateQuotationOrInvoice(formData: FormData) {
 export async function createStaffAccount(formData: FormData) {
   const actor = await requirePrototypeAdminSession();
   const parsed = staffAccountSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) redirect("/dashboard/settings?staff=invalid");
+  const sections = parseStaffSections(formData);
+  if (!parsed.success || !sections) redirect("/dashboard/settings?staff=invalid");
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email }, select: { id: true } });
   if (existing) redirect("/dashboard/settings?staff=exists");
@@ -650,12 +660,13 @@ export async function createStaffAccount(formData: FormData) {
         name: parsed.data.name,
         email: parsed.data.email,
         passwordHash: hashStaffPassword(parsed.data.password),
+        sectionAccess: sections,
         roles: { create: { roleId: role.id } },
       },
       select: { id: true, name: true, email: true },
     });
     await prisma.auditLog.create({
-      data: { actorId: actor.userId, action: "created", entityType: "User", entityId: staff.id, summary: `Created staff account for ${staff.email}` },
+      data: { actorId: actor.userId, action: "created", entityType: "User", entityId: staff.id, summary: `Created staff account for ${staff.email}`, metadata: { sectionAccess: sections } },
     });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
@@ -685,6 +696,25 @@ export async function setStaffStatus(formData: FormData) {
   redirect("/dashboard/settings?staff=updated");
 }
 
+export async function updateStaffSections(formData: FormData) {
+  const actor = await requirePrototypeAdminSession();
+  const userId = String(formData.get("userId") ?? "");
+  const sections = parseStaffSections(formData);
+  if (!userId || !sections) redirect("/dashboard/settings?staff=invalid");
+
+  const staff = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, roles: { select: { role: { select: { name: true } } } } },
+  });
+  if (!staff || staff.roles.some(({ role }) => role.name === adminRoleName)) redirect("/dashboard/settings?staff=invalid");
+
+  await prisma.user.update({ where: { id: staff.id }, data: { sectionAccess: sections } });
+  await prisma.auditLog.create({
+    data: { actorId: actor.userId, action: "updated", entityType: "User", entityId: staff.id, summary: `Updated portal sections for ${staff.email}`, metadata: { sectionAccess: sections } },
+  });
+  redirect("/dashboard/settings?staff=sections");
+}
+
 export async function resetStaffPassword(formData: FormData) {
   const actor = await requirePrototypeAdminSession();
   const parsed = staffPasswordSchema.safeParse(Object.fromEntries(formData));
@@ -704,7 +734,7 @@ export async function resetStaffPassword(formData: FormData) {
 }
 
 export async function updateProspectStatus(formData: FormData) {
-  await requirePrototypeSession();
+  await requireSectionAccess("prospects");
   const parsed = prospectStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/prospects?error=invalid");
   await prisma.prospect.update({ where: { id: parsed.data.id }, data: { status: parsed.data.status } });
@@ -712,7 +742,7 @@ export async function updateProspectStatus(formData: FormData) {
 }
 
 export async function createFinding(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("findings");
   const parsed = findingSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/findings?error=invalid");
   const finding = await prisma.finding.create({ data: parsed.data });
@@ -721,7 +751,7 @@ export async function createFinding(formData: FormData) {
 }
 
 export async function updateFindingStatus(formData: FormData) {
-  await requirePrototypeSession();
+  await requireSectionAccess("findings");
   const parsed = findingStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/findings?error=invalid");
   await prisma.finding.update({ where: { id: parsed.data.id }, data: { status: parsed.data.status } });
@@ -729,7 +759,7 @@ export async function updateFindingStatus(formData: FormData) {
 }
 
 export async function createPortfolioProject(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("portfolio");
   const parsed = portfolioProjectSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/portfolio?error=invalid");
   const media = await preparePortfolioMedia(formData, session.userId);
@@ -751,7 +781,7 @@ export async function createPortfolioProject(formData: FormData) {
 }
 
 export async function addPortfolioProjectMedia(formData: FormData) {
-  const session = await requirePrototypeSession();
+  const session = await requireSectionAccess("portfolio");
   const parsed = portfolioProjectMediaSchema.safeParse({ id: formData.get("id") });
   if (!parsed.success) redirect("/dashboard/portfolio?error=invalid");
   const media = await preparePortfolioMedia(formData, session.userId);
@@ -769,7 +799,7 @@ export async function addPortfolioProjectMedia(formData: FormData) {
 }
 
 export async function setPortfolioProjectPublished(formData: FormData) {
-  await requirePrototypeSession();
+  await requireSectionAccess("portfolio");
   const parsed = portfolioProjectStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/portfolio?error=invalid");
   await prisma.portfolioProject.update({ where: { id: parsed.data.id }, data: { isPublished: parsed.data.isPublished === "true" } });
