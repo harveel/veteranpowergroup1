@@ -46,7 +46,9 @@ For each of the two surfaces: Vercel → Add New Project → import the repo, th
 | `STAFF_PORTAL_URL` | `https://portal.veteranpowergroup.com` | |
 | `PUBLIC_SITE_URL` | `https://veteranpowergroup.com` | `https://veteranpowergroup.com` |
 
-Use a fresh random `PROTOTYPE_SESSION_SECRET` (32+ chars) and a strong admin password for production.
+Use a fresh random `PROTOTYPE_SESSION_SECRET` (32+ chars) and a strong admin password for production. Production builds fail if `DATABASE_URL`, `PROTOTYPE_ADMIN_EMAIL`, `PROTOTYPE_ADMIN_PASSWORD` or `PROTOTYPE_SESSION_SECRET` is missing, so add them in Vercel before the first deploy.
+
+Vercel does not run migrations: run `npx prisma migrate deploy` against Neon before the first deploy and after every new migration.
 
 ## 4. Point your cPanel domains at Vercel (DNS only, nothing is uploaded to cPanel)
 
