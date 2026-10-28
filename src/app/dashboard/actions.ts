@@ -221,6 +221,47 @@ export async function createQuotation(formData: FormData) {
   redirect("/dashboard/quotations?created=1");
 }
 
+export async function createInvoice(formData: FormData) {
+  const session = await requirePrototypeSession();
+  const parsed = quotationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) redirect("/dashboard/invoices?error=invalid");
+  const owner = await prisma.user.findUnique({ where: { email: session.email }, select: { id: true } });
+  const company = await prisma.companySettings.findUnique({ where: { id: 1 }, select: { id: true } });
+  if (!owner || !company) redirect("/dashboard/invoices?error=setup");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const customer = await resolveCustomer(tx, parsed.data);
+    if (!customer) return null;
+
+    const year = new Date().getFullYear();
+    const settings = await tx.documentSettings.findUnique({ where: { companyId: 1 }, select: { defaultTaxRate: true } });
+    const { number, sequenceValue } = await nextDocumentNumber(tx, "INVOICE", year);
+    const subtotal = Math.round(parsed.data.quantity * parsed.data.unitPrice * 100) / 100;
+    const taxRate = settings?.defaultTaxRate ?? 0;
+    const tax = Math.round(subtotal * taxRate) / 100;
+    const total = Math.round((subtotal + tax) * 100) / 100;
+
+    const document = await tx.document.create({
+      data: {
+        number, type: "INVOICE", invoiceStatus: "DRAFT", subtotal, tax, total,
+        customerId: customer.customer.id, ownerId: owner.id, companyId: 1, sequenceYear: year, sequenceValue,
+        items: { create: { description: parsed.data.description, quantity: parsed.data.quantity, unitPrice: parsed.data.unitPrice, taxRate, amount: subtotal, taxAmount: tax, total } },
+      },
+      select: { id: true, number: true },
+    });
+    return { ...document, customer: customer.customer, customerCreated: customer.created };
+  });
+
+  if (!result) redirect("/dashboard/invoices?error=customer");
+  if (result.customerCreated) {
+    await prisma.auditLog.create({ data: { actorId: owner.id, action: "created", entityType: "Customer", entityId: result.customer.id, summary: `Created customer ${result.customer.name} from an invoice` } });
+  }
+  await prisma.auditLog.create({
+    data: { actorId: owner.id, action: "created", entityType: "Invoice", entityId: result.id, summary: `Created draft invoice ${result.number}` },
+  });
+  redirect(`/dashboard/documents/${result.id}?invoice=created`);
+}
+
 export async function createSchoolPlanQuotation(formData: FormData) {
   const session = await requirePrototypeSession();
   const parsed = schoolPlanSchema.safeParse(Object.fromEntries(formData));

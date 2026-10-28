@@ -36,6 +36,7 @@ export default async function DocumentDetailPage({ params, searchParams }: PageP
     {query.invoices === "exists" && <p className="notice">Installment invoices already exist for this quotation.</p>}
     {query.invoices === "payments" && <p className="notice notice-error" role="alert">This quotation has receipts recorded against it. Create invoices only after resolving those receipts.</p>}
     {query.issued === "1" && <p className="notice" role="status">Invoice issued. Record a payment when the funds are received.</p>}
+    {query.invoice === "created" && <p className="notice" role="status">Draft invoice created. Add or edit line items below, then issue it when ready.</p>}
     {query.receipt === "created" && <p className="notice" role="status">Receipt created.</p>}
     {query.receipt === "updated" && <p className="notice" role="status">Receipt details saved. Any linked document balance has been recalculated.</p>}
     {query.receipt === "balance" && <p className="notice notice-error" role="alert">That amount would make the total receipts exceed the related document amount.</p>}
