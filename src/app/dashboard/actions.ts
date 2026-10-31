@@ -909,13 +909,13 @@ export async function updateWhatsappSettings(formData: FormData) {
   const parsed = whatsappSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/dashboard/settings?whatsapp=invalid");
 
-  // An empty number switches the floating button off.
+  // An empty number restores the published company contact number fallback.
   const number = parsed.data.number === "" ? null : normalizeWhatsappNumber(parsed.data.number);
   if (parsed.data.number !== "" && !number) redirect("/dashboard/settings?whatsapp=invalid");
 
   await prisma.companyProfile.update({ where: { companyId: 1 }, data: { whatsappNumber: number, whatsappMessage: parsed.data.message || null } });
   await prisma.auditLog.create({
-    data: { actorId: actor.userId, action: "updated", entityType: "CompanyProfile", entityId: "1", summary: number ? `Set WhatsApp number to ${number}` : "Turned off the WhatsApp button" },
+    data: { actorId: actor.userId, action: "updated", entityType: "CompanyProfile", entityId: "1", summary: number ? `Set WhatsApp number to ${number}` : "Reset WhatsApp number to the published company contact" },
   });
   revalidatePath("/", "layout");
   redirect("/dashboard/settings?whatsapp=saved");
