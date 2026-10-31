@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { requireSectionAccess } from "@/lib/prototype-auth";
 import { updateProspectStatus } from "@/app/dashboard/actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProspectsPage({ searchParams }: PageProps<"/dashboard/prospects">) {
   await requireSectionAccess("prospects");
   const params = await searchParams;
