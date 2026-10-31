@@ -2,7 +2,7 @@ import { createStaffAccount, resetStaffPassword, setStaffStatus, updateCompanyPr
 import { isStaffAccessKey, staffAccessGroups, staffAccessKeys, staffAccessLabels, type StaffAccessKey } from "@/lib/staff-sections";
 import { prisma } from "@/lib/prisma";
 import { getStaffAccess, requireSectionAccess } from "@/lib/prototype-auth";
-import { defaultWhatsappMessage } from "@/lib/whatsapp";
+import { defaultWhatsappMessage, defaultWhatsappNumber } from "@/lib/whatsapp";
 
 const whatsappMessages: Record<string, string> = {
   saved: "WhatsApp settings saved. The button on the website is updated.",
@@ -83,7 +83,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/dashboa
       <div className="panel-heading"><div><p className="eyebrow">Website</p><h3>WhatsApp button</h3><p className="dashboard-note">A floating button on the public website opens WhatsApp to this number with the preset message. Leave the number empty to hide the button.</p></div><span className="prototype-badge">Administrator</span></div>
       {whatsappFeedback && <p className={`staff-feedback${whatsappKey === "invalid" ? " is-error" : ""}`} role="status">{whatsappFeedback}</p>}
       <form action={updateWhatsappSettings} className="prototype-form whatsapp-settings-form">
-        <label>WhatsApp number<input name="number" type="tel" inputMode="tel" maxLength={40} defaultValue={company?.profile?.whatsappNumber ? `+${company.profile.whatsappNumber}` : ""} placeholder="+254 707 734 670" /><span>Numbers starting with 0 are treated as Kenyan (+254).</span></label>
+        <label>WhatsApp number<input name="number" type="tel" inputMode="tel" maxLength={40} defaultValue={company?.profile?.whatsappNumber ? `+${company.profile.whatsappNumber}` : `+${defaultWhatsappNumber}`} placeholder="+254 707 734 670" /><span>Numbers starting with 0 are treated as Kenyan (+254). Leave the published default in place to use +254 707 734 670.</span></label>
         <label className="whatsapp-message-field">Preset message<textarea name="message" maxLength={500} defaultValue={company?.profile?.whatsappMessage ?? defaultWhatsappMessage} /></label>
         <button className="dashboard-button" type="submit">Save WhatsApp settings</button>
       </form>
