@@ -590,3 +590,8 @@ td { color: var(--ink); }
 .portfolio-delete-button:hover { background: #a84532; color: #fff; }
 :root[data-theme="dark"] .portfolio-delete-button { border-color: #d87860; color: #ffd0bd; }
 :root[data-theme="dark"] .portfolio-delete-button:hover { background: #a84532; color: #fff; }
+
+.portfolio-bulk-delete-form { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; justify-content: end; }
+.portfolio-delete-all-button { background: #a84532; border: 1px solid #a84532; color: #fff; cursor: pointer; font: inherit; font-size: 11px; padding: 6px 9px; }
+.portfolio-delete-button:disabled, .portfolio-delete-all-button:disabled { cursor: not-allowed; opacity: .5; }
+:root[data-theme="dark"] .portfolio-delete-all-button { background: #a84532; border-color: #d87860; }
