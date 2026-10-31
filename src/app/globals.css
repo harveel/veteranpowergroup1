@@ -584,3 +584,9 @@ td { color: var(--ink); }
 @media (max-width: 760px) { .staff-sections { grid-template-columns: 1fr 1fr; } .access-denied-notice { margin: 16px 18px 0; } }
 .sidebar-bottom > a:not(.sidebar-download-all) { display: block; margin-top: 12px; }
 .company-profile-form .company-profile-wide { grid-column: 1 / -1; }
+
+.portfolio-publish-controls { align-items: start; display: grid; gap: 8px; justify-items: start; }
+.portfolio-delete-button { background: transparent; border: 1px solid #a84532; color: #a84532; cursor: pointer; font: inherit; font-size: 11px; padding: 6px 9px; }
+.portfolio-delete-button:hover { background: #a84532; color: #fff; }
+:root[data-theme="dark"] .portfolio-delete-button { border-color: #d87860; color: #ffd0bd; }
+:root[data-theme="dark"] .portfolio-delete-button:hover { background: #a84532; color: #fff; }
