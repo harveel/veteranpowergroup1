@@ -595,3 +595,9 @@ td { color: var(--ink); }
 .portfolio-delete-all-button { background: #a84532; border: 1px solid #a84532; color: #fff; cursor: pointer; font: inherit; font-size: 11px; padding: 6px 9px; }
 .portfolio-delete-button:disabled, .portfolio-delete-all-button:disabled { cursor: not-allowed; opacity: .5; }
 :root[data-theme="dark"] .portfolio-delete-all-button { background: #a84532; border-color: #d87860; }
+
+.portfolio-category-options { border: 1px solid var(--line); display: grid; gap: 9px 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-column: 1 / -1; margin: 0; padding: 12px 14px; }
+.portfolio-category-options legend { color: var(--ink); font-size: 12px; padding: 0 5px; }
+.portfolio-category-options legend span { color: var(--muted); font-size: 10px; margin-left: 7px; }
+.portfolio-category-options .checkbox-label { align-items: center; display: flex; gap: 7px; }
+.portfolio-category-options input[type="checkbox"] { accent-color: var(--forest); min-height: auto; width: auto; }
