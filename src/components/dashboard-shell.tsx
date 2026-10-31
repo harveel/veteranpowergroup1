@@ -2,6 +2,7 @@ import Link from "next/link";
 import { logout } from "@/app/login/actions";
 import { CompanyBrand } from "@/components/company-brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DashboardNavLink } from "@/components/dashboard-nav-link";
 import { Suspense } from "react";
 import { AccessDeniedNotice } from "@/components/access-denied-notice";
 import { publicSiteUrl } from "@/lib/surface-urls";
@@ -22,7 +23,7 @@ export function DashboardShell({ children, staff, sections }: { children: React.
         <nav className="dashboard-nav" aria-label="Staff navigation">
           {navGroups.map(([group, items]) => <div className="nav-group" key={group}>
             <span className="nav-group-title">{group}</span>
-            {items.map(([label, href]) => <Link className="dashboard-nav-link" href={href} key={href}><span className="nav-icon" />{label}</Link>)}
+            {items.map(([label, href]) => <DashboardNavLink href={href} label={label} key={href} />)}
           </div>)}
         </nav>
         <div className="sidebar-bottom">
@@ -34,7 +35,7 @@ export function DashboardShell({ children, staff, sections }: { children: React.
         </div>
       </aside>
       <nav className="mobile-dashboard-nav" aria-label="Staff navigation">
-        {navGroups.flatMap(([, items]) => items).map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}
+        {navGroups.flatMap(([, items]) => items).map(([label, href]) => <DashboardNavLink href={href} label={label} compact key={href} />)}
         {canDownloadAll && <a href="/api/exports/all">Download all</a>}
         <ThemeToggle />
         <form action={logout}><button type="submit">Sign out</button></form>
