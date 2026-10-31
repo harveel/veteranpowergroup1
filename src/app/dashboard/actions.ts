@@ -105,7 +105,7 @@ const findingSchema = z.object({
 const findingStatusSchema = z.object({ id: z.string().min(1), status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED"]) });
 const portfolioProjectSchema = z.object({
   title: z.string().trim().min(3).max(160),
-  category: z.enum(["Power Solutions", "Solar Solutions", "Borehole Solutions"]),
+  category: z.array(z.enum(["Power Solutions", "Solar Solutions", "Borehole Solutions"])).min(1).max(3),
   location: z.string().trim().max(160).optional(),
   summary: z.string().trim().min(10).max(2000),
   completionYear: z.union([z.literal(""), z.coerce.number().int().min(1980).max(2100)]).optional(),
@@ -763,14 +763,14 @@ export async function updateFindingStatus(formData: FormData) {
 
 export async function createPortfolioProject(formData: FormData) {
   const session = await requireSectionAccess("portfolio");
-  const parsed = portfolioProjectSchema.safeParse(Object.fromEntries(formData));
+  const parsed = portfolioProjectSchema.safeParse({ ...Object.fromEntries(formData), category: formData.getAll("category") });
   if (!parsed.success) redirect("/dashboard/portfolio?error=invalid");
   const media = await preparePortfolioMedia(formData, session.userId);
   if (!media) redirect("/dashboard/portfolio?error=media");
   const project = await prisma.portfolioProject.create({
     data: {
       title: parsed.data.title,
-      category: parsed.data.category,
+      category: parsed.data.category.join(", "),
       location: parsed.data.location || null,
       summary: parsed.data.summary,
       completionYear: typeof parsed.data.completionYear === "number" ? parsed.data.completionYear : null,
