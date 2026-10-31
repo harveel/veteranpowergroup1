@@ -26,7 +26,7 @@ export default async function PortfolioManagerPage({ searchParams }: PageProps<"
       <div className="panel-heading"><div><p className="eyebrow">New portfolio entry</p><h3>Add a completed project</h3></div></div>
       <form action={createPortfolioProject} className="prototype-form">
         <label>Project name<input name="title" required minLength={3} maxLength={160} /></label>
-        <label>Category<select name="category" required defaultValue="Power Solutions"><option>Power Solutions</option><option>Solar Solutions</option><option>Borehole Solutions</option></select></label>
+        <fieldset className="portfolio-category-options"><legend>Category <span>Select all that apply</span></legend><label className="checkbox-label"><input type="checkbox" name="category" value="Power Solutions" />Power Solutions</label><label className="checkbox-label"><input type="checkbox" name="category" value="Solar Solutions" />Solar Solutions</label><label className="checkbox-label"><input type="checkbox" name="category" value="Borehole Solutions" />Borehole Solutions</label></fieldset>
         <label>Location<input name="location" maxLength={160} /></label>
         <label>Completion year<input name="completionYear" type="number" min="1980" max="2100" /></label>
         <label className="finding-details-input">Project summary<textarea name="summary" rows={4} required minLength={10} maxLength={2000} /></label>
