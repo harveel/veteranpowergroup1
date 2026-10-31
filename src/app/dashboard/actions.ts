@@ -113,6 +113,7 @@ const portfolioProjectSchema = z.object({
 });
 const portfolioProjectStatusSchema = z.object({ id: z.string().min(1), isPublished: z.enum(["true", "false"]) });
 const portfolioProjectMediaSchema = z.object({ id: z.string().min(1) });
+const portfolioProjectDeleteSchema = z.object({ id: z.string().min(1) });
 
 const maxPortfolioMediaFiles = 10;
 const maxPortfolioMediaBytes = 3 * 1024 * 1024;
@@ -807,6 +808,35 @@ export async function setPortfolioProjectPublished(formData: FormData) {
   await prisma.portfolioProject.update({ where: { id: parsed.data.id }, data: { isPublished: parsed.data.isPublished === "true" } });
   revalidatePath("/portfolio");
   redirect("/dashboard/portfolio?updated=1");
+}
+
+export async function deletePortfolioProject(formData: FormData) {
+  const actor = await requireSectionAccess("portfolio");
+  const parsed = portfolioProjectDeleteSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) redirect("/dashboard/portfolio?error=invalid");
+
+  const project = await prisma.portfolioProject.findUnique({
+    where: { id: parsed.data.id },
+    select: { id: true, title: true },
+  });
+  if (!project) redirect("/dashboard/portfolio?error=notfound");
+
+  await prisma.$transaction([
+    prisma.auditLog.create({
+      data: {
+        actorId: actor.userId,
+        action: "deleted",
+        entityType: "PortfolioProject",
+        entityId: project.id,
+        summary: `Deleted portfolio project ${project.title}`,
+      },
+    }),
+    prisma.portfolioProject.delete({ where: { id: project.id } }),
+  ]);
+
+  revalidatePath("/portfolio");
+  revalidatePath("/dashboard/portfolio");
+  redirect("/dashboard/portfolio?deleted=1");
 }
 
 const optionalText = (max: number) => z.string().trim().max(max).transform((value) => value || null);
