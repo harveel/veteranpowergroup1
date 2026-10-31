@@ -839,6 +839,37 @@ export async function deletePortfolioProject(formData: FormData) {
   redirect("/dashboard/portfolio?deleted=1");
 }
 
+export async function deletePortfolioProjects(formData: FormData) {
+  const actor = await requireSectionAccess("portfolio");
+  const mode = formData.get("mode");
+  if (mode !== "selected" && mode !== "all") redirect("/dashboard/portfolio?error=invalid");
+
+  let projects: { id: string; title: string }[];
+  if (mode === "all") {
+    projects = await prisma.portfolioProject.findMany({ select: { id: true, title: true } });
+  } else {
+    const submittedIds = formData.getAll("projectIds");
+    if (submittedIds.some((id) => typeof id !== "string" || id.length === 0)) redirect("/dashboard/portfolio?error=invalid");
+    const ids = [...new Set(submittedIds as string[])];
+    if (ids.length === 0) redirect("/dashboard/portfolio?error=invalid");
+    projects = await prisma.portfolioProject.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
+    if (projects.length !== ids.length) redirect("/dashboard/portfolio?error=notfound");
+  }
+
+  if (projects.length > 0) {
+    await prisma.$transaction([
+      ...projects.map((project) => prisma.auditLog.create({
+        data: { actorId: actor.userId, action: "deleted", entityType: "PortfolioProject", entityId: project.id, summary: `Deleted portfolio project ${project.title}` },
+      })),
+      prisma.portfolioProject.deleteMany({ where: { id: { in: projects.map((project) => project.id) } } }),
+    ]);
+  }
+
+  revalidatePath("/portfolio");
+  revalidatePath("/dashboard/portfolio");
+  redirect(`/dashboard/portfolio?deleted=${projects.length}`);
+}
+
 const optionalText = (max: number) => z.string().trim().max(max).transform((value) => value || null);
 const companyProfileSchema = z.object({
   name: z.string().trim().min(2).max(160),
